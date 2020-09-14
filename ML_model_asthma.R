@@ -5,8 +5,7 @@ install.packages("ellipse")
 install.packages("kernlab")
 install.packages("randomForest")
 install.packages("mlbench")
-install.packages("MASS")                 
-install.packages("XQuartz")
+install.packages("MASS")
 
 #Load packages:
 library(tidyverse)
@@ -24,11 +23,11 @@ library(kernlab)
 library(randomForest)
 library(mlbench)
 library(MASS)
-library(XQuartz)
 
 
 #Import dataset:
 ML_Asthma <- read_csv("~/Desktop/ML model in R _ Asthma /ML_Asthma.csv")
+View(ML_Asthma)
 
 #Comvert GOLD_Dx as "factor":
 ML_Asthma$GOLD_Dx <- as.factor(ML_Asthma$GOLD_Dx)
@@ -61,8 +60,8 @@ summary(ML_Asthma)
 
 #Univariate Plots for attributes:
   #Split input(predictors) and output(predicted) attributes:
-x <- ML_Asthma[,1:19]
-y <- ML_Asthma[,20]
+x <- ML_Asthma[,1:18]
+y <- ML_Asthma[,19]
 
   #Boxplot for each imput attribut:
 boxplot(ML_Asthma$FeNO)
@@ -71,7 +70,7 @@ boxplot(ML_Asthma$FEV1_pre)
 boxplot(ML_Asthma$FEF2575_pre)
 boxplot(ML_Asthma$FEV1FVC_pre)
 boxplot(ML_Asthma$BMI)
-boxplot(ML_Asthma$REV_ML)
+boxplot(ML_Asthma$REV_ml)
 
   #Plot output attribut:
 plot(y)
@@ -79,7 +78,7 @@ plot(y)
 #Multivariate Plots:
 featurePlot(ML_Asthma$FeNO, ML_Asthma$GOLD_Dx)
 featurePlot(ML_Asthma$FVC_pre, ML_Asthma$GOLD_Dx)
-featurePlot(ML_Asthma$REV_ML, ML_Asthma$GOLD_Dx)
+featurePlot(ML_Asthma$REV_ml, ML_Asthma$GOLD_Dx)
 featurePlot(ML_Asthma$BMI, ML_Asthma$GOLD_Dx)
 
 #Density plots for each attribute by class value:
@@ -88,7 +87,7 @@ featurePlot(ML_Asthma$FeNO, ML_Asthma$GOLD_Dx, plot="density", scales=scales)
 featurePlot(ML_Asthma$FVC_pre, ML_Asthma$GOLD_Dx, plot="density", scales=scales)
 featurePlot(ML_Asthma$FEV1FVC_pre, ML_Asthma$GOLD_Dx, plot="density", scales=scales)
 featurePlot(ML_Asthma$FEV1_pre, ML_Asthma$GOLD_Dx, plot="density", scales=scales)
-featurePlot(ML_Asthma$REV_ML, ML_Asthma$GOLD_Dx, plot="density", scales=scales)
+featurePlot(ML_Asthma$REV_ml, ML_Asthma$GOLD_Dx, plot="density", scales=scales)
 featurePlot(ML_Asthma$BMI, ML_Asthma$GOLD_Dx, plot="density", scales=scales)
 
 #Test Harness:
@@ -164,8 +163,189 @@ tbl = table(predictions, validation$GOLD_Dx)
 tbl
 chisq.test(tbl)
 
-#Adding RF predictions to validadion dataset:
-validation$RF_predictions <- predictions
-view(validation)
+#Adding RF predictions to validadion dataset (remove # to run):
+#validation$RF_predictions <- predictions
+#view(validation)
+
+#Deeper Analysis of Ramdon Forest Model:
+set.seed(222)
+  #(GOLD_Dx~. where "." means all variables are include. It is possible to specify the
+  #the variables we want to include)
+rf <- randomForest(GOLD_Dx~., data = ML_Asthma)
+print(rf)
+  #(Attributes allows to see the attributes of model, so we can choose which attributes
+  #to further check.)
+attributes(rf)
+rf$call
+rf$type
+rf$predicted
+rf$votes
+rf$err.rate
+rf$confusion
+rf$oob.times
+rf$classes
+rf$importance
+rf$importanceSD
+rf$localImportance
+rf$proximity
+rf$ntree
+rf$mtry
+rf$forest
+rf$y
+rf$test
+rf$inbag
+rf$terms
+
+#Prediction and Confusion Matrix ML_Asthma:
+p1 <- predict(rf, ML_Asthma)
+  #Compare initial results from RF model and real data:
+head(p1)
+head(ML_Asthma$GOLD_Dx)
+  #Confusion Matrix:
+confusionMatrix(p1, ML_Asthma$GOLD_Dx)
+
+#RF model evaluation with validation data:
+p2 <- predict(rf, validation)
+head(p2)
+head(validation$GOLD_Dx)
+confusionMatrix(p2, validation$GOLD_Dx)
+
+#Error rate of RF model:
+plot(rf)  
+  #(it is possible to see that the RF model does not improve much after 150-200 trees)
+
+#Number of nodes for the trees:
+hist(treesize(rf),
+     main = "No. of Nodes for the Tree",
+     col = "blue")
+
+#Variable importance (how worse the model plays if a variable is removed):
+varImp(rf)
+varImpPlot(rf,
+           sort = T,
+           n.var = 10,
+           main = "TOP 10 - Variable Importance")
+#How often a variable appears in the RF model:
+varUsed(rf)
+
+#Graphical visualization of important variables:
+#By Age:
+ggplot(data = ML_Asthma) +
+  aes(x = Age, fill = GOLD_Dx) +
+  geom_histogram() +
+  labs(title = "Asthma diagnosis rate",
+       y = "Asthma",
+       subtitle = "Distribution By Age",
+       caption = "Carla Martins")
+
+#By Gender:
+ggplot(data = ML_Asthma) +
+  aes(x = Gender, fill = GOLD_Dx) +
+  geom_histogram(bins = 3) +
+  labs(title = "Asthma diagnosis rate",
+       y = "Asthma",
+       subtitle = "Distribution By Gender",
+       caption = "Author: Carla Martins")
+
+#By SPT:
+ggplot(data = ML_Asthma) +
+  aes(x = SPT, fill = GOLD_Dx) +
+  geom_histogram(bins = 3) +
+  labs(title = "Asthma diagnosis rate",
+       y = "Asthma",
+       subtitle = "Distribution By SPT",
+       caption = "Carla Martins")
+
+#By Father's Age:
+ggplot(data = ML_Asthma) +
+  aes(x = F_age, fill = GOLD_Dx) +
+  geom_histogram(colour = "#1380A1") +
+  labs(title = "Asthma diagnosis rate",
+       y = "Asthma",
+       subtitle = "Distribution By Father's Age",
+       caption = "Author: Carla Martins")
+
+#By Mother's Age:
+ggplot(data = ML_Asthma) +
+  aes(x = M_age, fill = GOLD_Dx) +
+  geom_histogram(colour = "#1380A1") +
+  labs(title = "Asthma diagnosis rate",
+       y = "Asthma",
+       subtitle = "Distribution By Mother's Age",
+       caption = "Author: Carla Martins")
+
+#By REV_ml:
+ggplot(data = ML_Asthma) +
+  aes(x = REV_ml, fill = GOLD_Dx) +
+  geom_histogram(bins = 20, colour = "#1380A1") +
+  labs(title = "Asthma diagnosis rate",
+       y = "Asthma",
+       subtitle = "Distribution By Salbutamol Reversibility",
+       caption = "Author: Carla Martins")
+
+#By FEF2575_pre:
+ggplot(data = ML_Asthma) +
+  aes(x = FEF2575_pre, fill = GOLD_Dx) +
+  geom_histogram(colour = "#1380A1") +
+  labs(title = "Asthma diagnosis rate",
+       y = "Asthma",
+       subtitle = "Distribution By FEF2575_pre",
+       caption = "Author: Carla Martins")
+
+#By FEV1_pre:
+ggplot(data = ML_Asthma) +
+  aes(x = FEV1_pre, fill = GOLD_Dx) +
+  geom_histogram(colour = "#1380A1") +
+  labs(title = "Asthma diagnosis rate",
+       y = "Asthma",
+       subtitle = "Distribution By FEV1_pre",
+       caption = "Author: Carla Martins")
+
+#Children reversibility according to FEV1 pre and SPT results:
+ML_Asthma %>%
+  filter %>%
+  ggplot(mapping = aes(x = FEV1_pre, y = REV_ml)) +
+  geom_point(aes(colour = GOLD_Dx)) +
+  geom_smooth(se = TRUE)+
+  facet_grid(Gender~SPT, scales = "free") +
+  labs(title = "Pattern of reversibility by FEV1_pre",
+       x = "FEV1 pre (ml)",
+       y = "Salbutamol Reversibility (ml)",
+       subtitle = "Children reversibility according to FEV1 pre and SPT results", 
+       
+       caption = "Author: Carla Martins") +
+  theme(
+    plot.subtitle = element_text(colour = "#17c5c9",
+                                 size=14))
+
+#Salbutamol Reversibility by GOLD_Dx
+ML_Asthma %>%
+  ggplot(mapping =  aes(x = GOLD_Dx, y = REV_ml)) +
+  geom_point(colour = "#1380A1", size = 1) +
+  geom_jitter(aes(colour = SPT))+ 
+  geom_boxplot(alpha = 0.7, outlier.colour = NA)+
+  labs(title = "Salbutamol Reversibility Distribution by Asthma Diagnosis and Age",
+       x = "Asthma Diagnosis",
+       y = "Salbutamol Reversibility (ml)",
+       subtitle = "How Inhaled Salbutamol Reversibility distribution affects Asthma Diagnosis",
+       caption = "Author: Carla Martins") 
+
+#FEF2575_pre by GOLD_Dx
+ML_Asthma %>%
+  ggplot(mapping =  aes(x = GOLD_Dx, y = FEF2575_pre)) +
+  geom_point(colour = "#1380A1", size = 1) +
+  geom_jitter(aes(colour = SPT))+ 
+  geom_boxplot(alpha = 0.7, outlier.colour = NA)+
+  labs(title = "FEF2575 pre Distribution by Asthma Diagnosis and Age",
+       x = "Asthma Diagnosis",
+       y = "FEF2575 (ml/s)",
+       subtitle = "How FEF2575 distribution affects Asthma Diagnosis",
+       caption = "Author: Carla Martins") +
+  coord_flip()
+
+
+
+
+
 
 
